@@ -177,14 +177,29 @@ os.system('cls')
 
 
 
-price = float(input("what is the price for the bill?: ")) 
-split = int(input("how many are splitting the bill?: "))
+# price = float(input("what is the price for the bill?: ")) 
+# split = int(input("how many are splitting the bill?: "))
 
-if split <= 0:
-    print("NOT VALID CHOOSE ATLEAST 1")
-    exit(1)
+# if split <= 0:
+#     print("NOT VALID CHOOSE ATLEAST 1")
+#     exit(1)
 
 
-result = price / split
-print(f"this is how much each person needs to pay = {round(result,2)} kr")
+# result = price / split
+# print(f"this is how much each person needs to pay = {round(result,2)} kr")
+
+
+
+# logical operators:
+# temp = 25
+
+# is_raining = False
+
+# if temp > 35 or temp < 0 or is_raining:
+#     print("event canceled")
+# else:
+#     print("Event is still on")
+
+
+
 

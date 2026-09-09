@@ -1,0 +1,1005 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>paho-mqtt, start to finish</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap">
+<style>
+  :root {
+    --ground: #f5f6f7;
+    --surface: #ffffff;
+    --surface-sunk: #eef0f1;
+    --ink: #191d21;
+    --ink-soft: #4b555d;
+    --ink-faint: #77828a;
+    --rule: #dce0e3;
+    --rule-strong: #c3c9cd;
+    --accent: #0d7c8c;
+    --accent-soft: #e3f1f2;
+    --req: #1f7a48;
+    --req-soft: #e2f0e7;
+    --opt: #8a5a12;
+    --opt-soft: #f5ebda;
+    --shadow: 0 1px 2px rgba(20, 30, 35, .06), 0 8px 24px rgba(20, 30, 35, .05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #121619;
+      --surface: #1a2024;
+      --surface-sunk: #141a1d;
+      --ink: #e7eaec;
+      --ink-soft: #aab4ba;
+      --ink-faint: #7d878d;
+      --rule: #2b333800;
+      --rule: #2c353a;
+      --rule-strong: #3c474d;
+      --accent: #3fb6c6;
+      --accent-soft: #16333a;
+      --req: #5cc088;
+      --req-soft: #16301f;
+      --opt: #d09a4f;
+      --opt-soft: #2f2513;
+      --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 10px 30px rgba(0, 0, 0, .25);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #121619;
+    --surface: #1a2024;
+    --surface-sunk: #141a1d;
+    --ink: #e7eaec;
+    --ink-soft: #aab4ba;
+    --ink-faint: #7d878d;
+    --rule: #2c353a;
+    --rule-strong: #3c474d;
+    --accent: #3fb6c6;
+    --accent-soft: #16333a;
+    --req: #5cc088;
+    --req-soft: #16301f;
+    --opt: #d09a4f;
+    --opt-soft: #2f2513;
+    --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 10px 30px rgba(0, 0, 0, .25);
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+    font-size: 17px;
+    line-height: 1.65;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 72px 24px 120px;
+  }
+
+  header { margin-bottom: 56px; }
+  .kicker {
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+    font-size: 12.5px;
+    letter-spacing: .14em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 16px;
+  }
+  h1 {
+    font-size: clamp(2rem, 5vw, 2.7rem);
+    line-height: 1.12;
+    font-weight: 700;
+    letter-spacing: -.02em;
+    text-wrap: balance;
+    margin: 0 0 18px;
+  }
+  .lede {
+    font-size: 1.12rem;
+    color: var(--ink-soft);
+    max-width: 62ch;
+    margin: 0;
+  }
+
+  h2 {
+    font-size: 1.4rem;
+    font-weight: 600;
+    letter-spacing: -.01em;
+    margin: 64px 0 8px;
+    padding-top: 28px;
+    border-top: 1px solid var(--rule);
+    text-wrap: balance;
+  }
+  h2 .num {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .85rem;
+    color: var(--accent);
+    margin-right: .8em;
+    font-weight: 500;
+  }
+  h3 {
+    font-size: 1.02rem;
+    font-weight: 600;
+    margin: 32px 0 6px;
+  }
+  p { margin: 14px 0; }
+  a { color: var(--accent); text-underline-offset: 2px; }
+  strong { font-weight: 600; }
+  code {
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+    font-size: .87em;
+    background: var(--surface-sunk);
+    border: 1px solid var(--rule);
+    border-radius: 4px;
+    padding: .08em .38em;
+    white-space: nowrap;
+  }
+  .section-intro { color: var(--ink-soft); margin-top: 10px; }
+
+  /* diagram */
+  .diagram {
+    background: var(--surface);
+    border: 1px solid var(--rule);
+    border-radius: 12px;
+    padding: 28px 20px 20px;
+    box-shadow: var(--shadow);
+    margin: 28px 0 8px;
+  }
+  .diagram svg { display: block; width: 100%; height: auto; }
+  .diagram figcaption {
+    font-size: .9rem;
+    color: var(--ink-faint);
+    margin-top: 14px;
+    text-align: center;
+  }
+
+  /* code block */
+  pre {
+    margin: 20px 0;
+    background: var(--surface-sunk);
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    padding: 18px 20px;
+    overflow-x: auto;
+    font-family: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+    font-size: 13.5px;
+    line-height: 1.7;
+  }
+  pre code {
+    background: none;
+    border: none;
+    padding: 0;
+    font-size: inherit;
+    white-space: pre;
+  }
+  .cm { color: var(--ink-faint); }
+  .kw { color: var(--accent); font-weight: 500; }
+  .st { color: var(--req); }
+
+  /* step list */
+  .steps { list-style: none; padding: 0; margin: 24px 0; display: flex; flex-direction: column; gap: 2px; }
+  .steps li {
+    display: grid;
+    grid-template-columns: 34px 1fr;
+    gap: 14px;
+    align-items: baseline;
+    padding: 14px 4px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .steps li:first-child { border-top: 1px solid var(--rule); }
+  .steps .s-num {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .8rem;
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .steps .s-body b { display: block; font-weight: 600; margin-bottom: 2px; }
+  .steps .s-body span { color: var(--ink-soft); font-size: .96rem; }
+  .steps .s-body span code { font-size: .85em; }
+
+  /* req / opt table */
+  .rot { margin: 26px 0; border: 1px solid var(--rule); border-radius: 10px; overflow: hidden; }
+  .rot-row {
+    display: grid;
+    grid-template-columns: 116px 1fr;
+    border-top: 1px solid var(--rule);
+  }
+  .rot-row:first-child { border-top: none; }
+  .rot-tag {
+    padding: 16px 14px;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .72rem;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    font-weight: 600;
+    display: flex;
+    align-items: flex-start;
+  }
+  .rot-tag.req { background: var(--req-soft); color: var(--req); }
+  .rot-tag.opt { background: var(--opt-soft); color: var(--opt); }
+  .rot-body { padding: 15px 16px; background: var(--surface); }
+  .rot-body b { font-weight: 600; }
+  .rot-body p { margin: 4px 0 0; color: var(--ink-soft); font-size: .95rem; }
+  .rot-body code { font-size: .82em; white-space: normal; }
+
+  .callout {
+    margin: 24px 0;
+    padding: 16px 18px;
+    background: var(--accent-soft);
+    border: 1px solid var(--rule);
+    border-left: 3px solid var(--accent);
+    border-radius: 8px;
+  }
+  .callout p { margin: 6px 0; font-size: .97rem; }
+  .callout p:first-child { margin-top: 0; }
+  .callout p:last-child { margin-bottom: 0; }
+  .callout b { font-weight: 600; }
+
+  table.qos {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 22px 0;
+    font-size: .95rem;
+  }
+  table.qos th, table.qos td {
+    text-align: left;
+    padding: 11px 12px;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+  }
+  table.qos th {
+    font-size: .74rem;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    font-weight: 600;
+  }
+  table.qos td:first-child {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    color: var(--accent);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  table.qos tr:last-child td { border-bottom: none; }
+
+  .wrap-scroll { overflow-x: auto; }
+
+  footer {
+    margin-top: 72px;
+    padding-top: 24px;
+    border-top: 1px solid var(--rule);
+    font-size: .88rem;
+    color: var(--ink-faint);
+  }
+  footer code { font-size: .85em; }
+
+  @media (max-width: 540px) {
+    .wrap { padding: 30px 0 90px; }
+    .steps li { grid-template-columns: 26px 1fr; gap: 10px; }
+    .rot-row { grid-template-columns: 92px 1fr; }
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .dash { stroke-dasharray: 5 5; animation: flow 1.1s linear infinite; }
+    @keyframes flow { to { stroke-dashoffset: -20; } }
+  }
+
+  /* side-by-side compare */
+  .compare {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 16px;
+    margin: 22px 0 8px;
+  }
+  .panel {
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--surface);
+    display: flex;
+    flex-direction: column;
+  }
+  .panel > h4 {
+    margin: 0;
+    padding: 11px 14px;
+    font-size: .74rem;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    font-weight: 600;
+    border-bottom: 1px solid var(--rule);
+  }
+  .panel.easy > h4 { background: var(--accent-soft); color: var(--accent); }
+  .panel.pro > h4 { background: var(--surface-sunk); color: var(--ink-soft); }
+  .panel > h4 .lbl {
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: .82rem;
+    color: var(--ink-faint);
+    font-weight: 400;
+  }
+  .panel pre {
+    margin: 0;
+    border: none;
+    border-radius: 0;
+    flex: 1;
+    font-size: 12.5px;
+  }
+
+  /* code / real-life mapping */
+  .maplist { display: flex; flex-direction: column; margin: 20px 0; }
+  .mi { padding: 16px 0; border-bottom: 1px solid var(--rule); }
+  .mi:first-child { border-top: 1px solid var(--rule); }
+  .mi h4 { margin: 0 0 8px; font-size: 1rem; font-weight: 600; }
+  .mi h4 code { font-size: .84em; white-space: nowrap; }
+  .mi p { margin: 5px 0; font-size: .95rem; line-height: 1.58; color: var(--ink-soft); }
+  .mi .tag {
+    display: inline-block;
+    min-width: 62px;
+    margin-right: 10px;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .66rem;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    font-weight: 600;
+    color: var(--accent);
+  }
+  .mi .tag.rl { color: var(--opt); }
+
+  @media (max-width: 640px) {
+    .compare { grid-template-columns: minmax(0, 1fr); }
+  }
+
+  /* ---- layout + sidebar contents ---- */
+  .layout {
+    display: grid;
+    grid-template-columns: 232px minmax(0, 760px);
+    justify-content: center;
+    gap: 56px;
+    padding: 0 24px;
+  }
+  .wrap { max-width: 760px; padding: 72px 0 120px; }
+
+  .toc { padding: 72px 0 40px; }
+  .toc details {
+    position: sticky;
+    top: 24px;
+    max-height: calc(100vh - 48px);
+    overflow-y: auto;
+  }
+  .toc summary {
+    list-style: none;
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .72rem;
+    letter-spacing: .16em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    margin-bottom: 18px;
+  }
+  .toc summary::-webkit-details-marker { display: none; }
+  .toc-cat {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .66rem;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--ink-faint);
+    font-weight: 600;
+    margin: 22px 0 7px;
+  }
+  .toc nav > .toc-cat:first-child { margin-top: 0; }
+  .toc a {
+    display: block;
+    padding: 5px 0 5px 14px;
+    border-left: 2px solid var(--rule);
+    color: var(--ink-soft);
+    text-decoration: none;
+    font-size: .875rem;
+    line-height: 1.35;
+    transition: color .15s ease, border-color .15s ease;
+  }
+  .toc a:hover { color: var(--ink); border-left-color: var(--rule-strong); }
+  .toc a.active { color: var(--accent); border-left-color: var(--accent); font-weight: 500; }
+
+  [id] { scroll-margin-top: 24px; }
+  @media (prefers-reduced-motion: no-preference) { html { scroll-behavior: smooth; } }
+
+  @media (min-width: 981px) {
+    .toc summary { pointer-events: none; }
+  }
+  @media (max-width: 980px) {
+    .layout { grid-template-columns: minmax(0, 1fr); gap: 0; max-width: 780px; margin: 0 auto; }
+    .toc { padding: 36px 0 0; }
+    .toc details {
+      position: static;
+      max-height: none;
+      overflow: visible;
+      padding-bottom: 22px;
+      border-bottom: 1px solid var(--rule);
+    }
+    .toc summary { cursor: pointer; }
+    .toc summary::after { content: " \25B8"; margin-left: 4px; }
+    .toc details[open] summary::after { content: " \25BE"; }
+    .toc nav { margin-top: 12px; }
+    .wrap { padding-top: 34px; }
+  }
+  @media (max-width: 600px) {
+    .layout { padding: 0 18px; }
+  }
+
+  /* ---- "how much Python" visuals ---- */
+  .pygrid {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 16px;
+    margin: 26px 0 8px;
+  }
+  .pycol {
+    border: 1px solid var(--rule);
+    border-radius: 10px;
+    overflow: hidden;
+    background: var(--surface);
+  }
+  .pycol > h4 {
+    margin: 0;
+    padding: 12px 16px;
+    font-size: .76rem;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    font-weight: 700;
+    border-bottom: 1px solid var(--rule);
+  }
+  .pycol.need > h4 { background: var(--req-soft); color: var(--req); }
+  .pycol.skip > h4 { background: var(--opt-soft); color: var(--opt); }
+  .pycol ul { list-style: none; margin: 0; padding: 4px 16px 10px; }
+  .pycol li {
+    position: relative;
+    padding: 11px 0 11px 22px;
+    border-bottom: 1px solid var(--rule);
+    font-size: .92rem;
+  }
+  .pycol li:last-child { border-bottom: none; }
+  .pycol li::before { position: absolute; left: 0; top: 10px; font-weight: 700; }
+  .pycol.need li::before { content: "+"; color: var(--req); }
+  .pycol.skip li { color: var(--ink-soft); }
+  .pycol.skip li::before { content: "\2013"; color: var(--ink-faint); }
+  .pycol li b { display: block; font-weight: 600; margin-bottom: 2px; color: var(--ink); }
+  .pycol li > span { color: var(--ink-soft); }
+  .pycol li code { font-size: .84em; white-space: normal; }
+  @media (max-width: 620px) { .pygrid { grid-template-columns: minmax(0, 1fr); } }
+</style>
+</head>
+<body>
+<div class="layout">
+  <aside class="toc">
+    <details open>
+      <summary>Contents</summary>
+      <nav>
+        <p class="toc-cat">Concepts</p>
+        <a href="#roles">The three roles</a>
+        <a href="#ubuntu">Where Ubuntu fits</a>
+        <p class="toc-cat">Writing a script</p>
+        <a href="#skeleton">The five-step skeleton</a>
+        <a href="#reqopt">Required vs. optional</a>
+        <p class="toc-cat">Reference</p>
+        <a href="#topics">Topics &amp; QoS</a>
+        <a href="#compare">Easiest vs. pro</a>
+        <a href="#proadds">What the pro adds</a>
+        <p class="toc-cat">How much Python?</p>
+        <a href="#py-need">What you need (and don't)</a>
+        <a href="#py-model">The event-driven model</a>
+      </nav>
+    </details>
+  </aside>
+  <main class="wrap">
+  <header>
+    <p class="kicker">MQTT&nbsp;·&nbsp;Python&nbsp;·&nbsp;paho-mqtt</p>
+    <h1>What every paho-mqtt script is made of</h1>
+    <p class="lede">A map of the moving parts: which lines you can never leave out, which are
+      there for comfort, where your Ubuntu / WSL box sits, and how much Python you actually
+      need to start.</p>
+  </header>
+
+  <section>
+    <h2 id="roles"><span class="num">01</span>The mental model: three roles</h2>
+    <p class="section-intro">MQTT has exactly three jobs on the wire. Nothing talks to anything
+      directly &mdash; every message goes <em>through the middle</em>.</p>
+
+    <figure class="diagram">
+      <svg viewBox="0 0 640 260" role="img" aria-label="Publisher sends to a broker on topic test/temperature; the broker fans the message out to subscribers.">
+        <defs>
+          <marker id="arw" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0 0 L10 5 L0 10 z" fill="var(--accent)"></path>
+          </marker>
+        </defs>
+
+        <!-- publisher -->
+        <rect x="16" y="96" width="150" height="68" rx="10" fill="var(--surface-sunk)" stroke="var(--rule-strong)"></rect>
+        <text x="91" y="126" text-anchor="middle" fill="var(--ink)" font-family="IBM Plex Sans, sans-serif" font-size="15" font-weight="600">Publisher</text>
+        <text x="91" y="146" text-anchor="middle" fill="var(--ink-faint)" font-family="IBM Plex Mono, monospace" font-size="11">your client</text>
+
+        <!-- broker -->
+        <rect x="245" y="78" width="150" height="104" rx="12" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.5"></rect>
+        <text x="320" y="120" text-anchor="middle" fill="var(--ink)" font-family="IBM Plex Sans, sans-serif" font-size="15" font-weight="700">Broker</text>
+        <text x="320" y="140" text-anchor="middle" fill="var(--ink-soft)" font-family="IBM Plex Mono, monospace" font-size="10.5">Mosquitto</text>
+        <text x="320" y="156" text-anchor="middle" fill="var(--ink-faint)" font-family="IBM Plex Mono, monospace" font-size="10.5">:1883</text>
+
+        <!-- subscribers -->
+        <rect x="474" y="40" width="150" height="60" rx="10" fill="var(--surface-sunk)" stroke="var(--rule-strong)"></rect>
+        <text x="549" y="66" text-anchor="middle" fill="var(--ink)" font-family="IBM Plex Sans, sans-serif" font-size="14" font-weight="600">Subscriber</text>
+        <text x="549" y="84" text-anchor="middle" fill="var(--ink-faint)" font-family="IBM Plex Mono, monospace" font-size="10.5">phone app</text>
+
+        <rect x="474" y="160" width="150" height="60" rx="10" fill="var(--surface-sunk)" stroke="var(--rule-strong)"></rect>
+        <text x="549" y="186" text-anchor="middle" fill="var(--ink)" font-family="IBM Plex Sans, sans-serif" font-size="14" font-weight="600">Subscriber</text>
+        <text x="549" y="204" text-anchor="middle" fill="var(--ink-faint)" font-family="IBM Plex Mono, monospace" font-size="10.5">logger.py</text>
+
+        <!-- links -->
+        <line class="dash" x1="170" y1="130" x2="240" y2="130" stroke="var(--accent)" stroke-width="2" marker-end="url(#arw)"></line>
+        <line class="dash" x1="399" y1="118" x2="470" y2="78" stroke="var(--accent)" stroke-width="2" marker-end="url(#arw)"></line>
+        <line class="dash" x1="399" y1="142" x2="470" y2="182" stroke="var(--accent)" stroke-width="2" marker-end="url(#arw)"></line>
+
+        <text x="203" y="118" text-anchor="middle" fill="var(--ink-faint)" font-family="IBM Plex Mono, monospace" font-size="10">publish</text>
+        <text x="424" y="86" text-anchor="middle" fill="var(--ink-faint)" font-family="IBM Plex Mono, monospace" font-size="10">deliver</text>
+
+        <text x="320" y="234" text-anchor="middle" fill="var(--ink-soft)" font-family="IBM Plex Mono, monospace" font-size="12">topic:  test/temperature</text>
+      </svg>
+      <figcaption>One broker in the middle. Publishers and subscribers are both just "clients" &mdash; and one program can be both at once.</figcaption>
+    </figure>
+
+    <h3 id="ubuntu">Where Ubuntu / WSL fits</h3>
+    <p>Ubuntu is <strong>not</strong> the broker. Ubuntu is just the operating system &mdash; a
+      place to run programs. The broker is <strong>Mosquitto</strong>, a specific piece of
+      software you <code>apt install</code> and start. It happens to run inside your WSL Ubuntu,
+      but it could equally run on Windows directly, in Docker, on a Raspberry Pi, or on a cloud
+      server. WSL is just a convenient Linux box to host it on.</p>
+    <div class="callout">
+      <p><b>So in your setup:</b></p>
+      <p>· <b>WSL Ubuntu</b> &rarr; the host machine (the "computer" the broker lives on)</p>
+      <p>· <b>Mosquitto</b> &rarr; the broker process, listening on port <code>1883</code></p>
+      <p>· <b>your Python scripts</b> &rarr; clients, connecting in as publisher and subscriber</p>
+      <p>WSL2 forwards listening ports to Windows, so from Windows Python the broker is just
+        <code>localhost:1883</code>.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2 id="skeleton"><span class="num">02</span>The skeleton &mdash; five things every script does</h2>
+    <p class="section-intro">Publisher or subscriber, the shape is the same. Change only the last step.</p>
+
+    <div class="wrap-scroll">
+<pre><code><span class="kw">import</span> paho.mqtt.client <span class="kw">as</span> mqtt        <span class="cm"># 1. import</span>
+
+client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)  <span class="cm"># 2. make a client</span>
+
+client.connect(<span class="st">"localhost"</span>, <span class="st">1883</span>, <span class="st">60</span>)   <span class="cm"># 3. connect: host, port, keepalive</span>
+
+<span class="cm"># 4. run the network loop  -- pick ONE style:</span>
+client.loop_forever()                        <span class="cm">#    blocks here forever (subscribers)</span>
+<span class="cm"># or</span>
+client.loop_start()                          <span class="cm">#    background thread (publishers)</span>
+
+<span class="cm"># 5. do the actual work:</span>
+client.publish(<span class="st">"test/temperature"</span>, <span class="st">"21.4"</span>)   <span class="cm"># publisher</span>
+client.subscribe(<span class="st">"test/temperature"</span>)          <span class="cm"># subscriber (+ an on_message callback)</span>
+</code></pre>
+    </div>
+
+    <ol class="steps">
+      <li><span class="s-num">1</span><span class="s-body"><b>Import the library</b><span>Always <code>import paho.mqtt.client as mqtt</code>.</span></span></li>
+      <li><span class="s-num">2</span><span class="s-body"><b>Create a client object</b><span>In paho-mqtt&nbsp;2.x you must pass <code>mqtt.CallbackAPIVersion.VERSION2</code>. This object holds the connection and the callbacks.</span></span></li>
+      <li><span class="s-num">3</span><span class="s-body"><b>Connect to a broker</b><span>Host and port are the only required arguments. No broker reachable &rarr; nothing else works.</span></span></li>
+      <li><span class="s-num">4</span><span class="s-body"><b>Run a network loop</b><span>Paho only sends, receives, and reconnects while a loop runs. <code>loop_forever()</code> blocks; <code>loop_start()</code> runs it on a thread; <code>loop()</code> pumps it manually. Forgetting this is the #1 "why is nothing happening" bug.</span></span></li>
+      <li><span class="s-num">5</span><span class="s-body"><b>Publish or subscribe</b><span>The one line that decides what this client <em>is</em>. Subscribers also need an <code>on_message</code> callback to actually see the data.</span></span></li>
+    </ol>
+  </section>
+
+  <section>
+    <h2 id="reqopt"><span class="num">03</span>Required vs. optional, line by line</h2>
+
+    <div class="rot">
+      <div class="rot-row">
+        <div class="rot-tag req">Required</div>
+        <div class="rot-body">
+          <b>The import</b>
+          <p><code>import paho.mqtt.client as mqtt</code></p>
+        </div>
+      </div>
+      <div class="rot-row">
+        <div class="rot-tag req">Required</div>
+        <div class="rot-body">
+          <b>A client object</b>
+          <p><code>mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)</code> &mdash; the version arg is mandatory in 2.x, optional-with-warning is gone.</p>
+        </div>
+      </div>
+      <div class="rot-row">
+        <div class="rot-tag req">Required</div>
+        <div class="rot-body">
+          <b>connect(host, port)</b>
+          <p>Port defaults to <code>1883</code> if you omit it, but you always need a reachable host.</p>
+        </div>
+      </div>
+      <div class="rot-row">
+        <div class="rot-tag req">Required</div>
+        <div class="rot-body">
+          <b>A loop call</b>
+          <p><code>loop_forever()</code>, <code>loop_start()</code>, or a manual <code>loop()</code>. Without one, no traffic moves.</p>
+        </div>
+      </div>
+      <div class="rot-row">
+        <div class="rot-tag req">Required</div>
+        <div class="rot-body">
+          <b>publish(...) or subscribe(...)</b>
+          <p>Plus <code>on_message</code> if you subscribe &mdash; otherwise messages arrive and vanish unseen.</p>
+        </div>
+      </div>
+
+      <div class="rot-row">
+        <div class="rot-tag opt">Optional</div>
+        <div class="rot-body">
+          <b>Callbacks</b> &mdash; <code>on_connect</code>, <code>on_disconnect</code>, <code>on_publish</code>, <code>on_subscribe</code>
+          <p>Nice for logging and for subscribing <em>inside</em> <code>on_connect</code> (so it re-subscribes after a reconnect). <code>on_message</code> is the one exception &mdash; effectively required for subscribers.</p>
+        </div>
+      </div>
+      <div class="rot-row">
+        <div class="rot-tag opt">Optional</div>
+        <div class="rot-body">
+          <b>QoS</b>
+          <p>Defaults to <code>0</code>. Pass <code>qos=1</code> or <code>2</code> on publish/subscribe when you care about delivery guarantees.</p>
+        </div>
+      </div>
+      <div class="rot-row">
+        <div class="rot-tag opt">Optional</div>
+        <div class="rot-body">
+          <b>keepalive</b>
+          <p>Third arg to <code>connect()</code>. Defaults to <code>60</code> seconds. Rarely need to change it.</p>
+        </div>
+      </div>
+      <div class="rot-row">
+        <div class="rot-tag opt">Optional</div>
+        <div class="rot-body">
+          <b>client_id</b>
+          <p>Auto-generated random id if you don't pass one. Set it (and <code>clean_session=False</code>) when you want the broker to queue messages for you while offline.</p>
+        </div>
+      </div>
+      <div class="rot-row">
+        <div class="rot-tag opt">Optional</div>
+        <div class="rot-body">
+          <b>retain=True</b>
+          <p>On publish, tells the broker to keep the last message on that topic and hand it to any future subscriber immediately.</p>
+        </div>
+      </div>
+      <div class="rot-row">
+        <div class="rot-tag opt">Optional</div>
+        <div class="rot-body">
+          <b>username_pw_set(...)</b> / <b>tls_set(...)</b>
+          <p>Auth and encryption. Not needed for a local Mosquitto with <code>allow_anonymous true</code>; needed for most real / public brokers.</p>
+        </div>
+      </div>
+      <div class="rot-row">
+        <div class="rot-tag opt">Optional</div>
+        <div class="rot-body">
+          <b>will_set(...)</b>
+          <p>"Last will" &mdash; a message the broker publishes on your behalf if your client drops without a clean disconnect.</p>
+        </div>
+      </div>
+      <div class="rot-row">
+        <div class="rot-tag opt">Optional</div>
+        <div class="rot-body">
+          <b>wait_for_publish()</b> / <b>disconnect()</b> / <b>loop_stop()</b>
+          <p>Tidy shutdown. Skippable in a quick experiment, worth having in anything long-lived.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 id="topics"><span class="num">04</span>Two things worth knowing early</h2>
+
+    <h3>Topics are slash-separated paths</h3>
+    <p>A publisher always publishes to <em>one exact</em> topic like <code>home/kitchen/temp</code>.
+      A subscriber can use wildcards: <code>+</code> matches one level
+      (<code>home/+/temp</code>), <code>#</code> matches the rest
+      (<code>home/#</code>). Wildcards are subscribe-only.</p>
+
+    <h3>QoS &mdash; how hard the broker tries to deliver</h3>
+    <div class="wrap-scroll">
+      <table class="qos">
+        <thead><tr><th>Level</th><th>Meaning</th><th>Use when</th></tr></thead>
+        <tbody>
+          <tr><td>0</td><td>At most once &mdash; fire and forget, may be lost</td><td>Frequent readings where one miss doesn't matter</td></tr>
+          <tr><td>1</td><td>At least once &mdash; guaranteed, may arrive twice</td><td>Commands / events you can't lose (the common default)</td></tr>
+          <tr><td>2</td><td>Exactly once &mdash; guaranteed, no duplicates, slowest</td><td>Billing-grade, must-not-double actions</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2 id="compare"><span class="num">05</span>Easiest vs. how a pro writes it</h2>
+    <p class="section-intro">The short scripts are perfect for <em>seeing the flow</em>. Real
+      deployments add a handful of things on top &mdash; none of them change the five-step
+      skeleton, they just help it survive a flaky network and a broker that restarts.</p>
+
+    <h3>Publisher</h3>
+    <div class="compare">
+      <div class="panel easy">
+        <h4>Easiest <span class="lbl">&mdash; send one value</span></h4>
+<pre><code>import paho.mqtt.client as mqtt
+
+c = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
+c.connect("localhost", 1883)
+c.loop_start()
+c.publish("test/temp", "23.4").wait_for_publish()
+c.loop_stop()</code></pre>
+      </div>
+      <div class="panel pro">
+        <h4>Production <span class="lbl">&mdash; survives the real world</span></h4>
+<pre><code>import logging
+import paho.mqtt.client as mqtt
+
+BROKER, PORT = "localhost", 1883
+TOPIC = "sensors/livingroom/temp"
+
+logging.basicConfig(level=logging.INFO)
+log = logging.getLogger("pub")
+
+
+def on_connect(c, userdata, flags, rc, props):
+    if rc != 0:
+        log.error("connect failed: %s", rc)
+    else:
+        log.info("connected")
+
+
+client = mqtt.Client(
+    mqtt.CallbackAPIVersion.VERSION2, client_id="pub-livingroom"
+)
+client.on_connect = on_connect
+client.will_set(TOPIC + "/status", "offline",
+                qos=1, retain=True)   <span class="cm"># broker says this if I vanish</span>
+
+client.connect(BROKER, PORT, keepalive=30)
+client.loop_start()
+try:
+    client.publish(TOPIC + "/status", "online", qos=1, retain=True)
+    info = client.publish(TOPIC, "23.4", qos=1, retain=True)
+    info.wait_for_publish(timeout=5)
+finally:
+    client.loop_stop()
+    client.disconnect()</code></pre>
+      </div>
+    </div>
+
+    <h3>Subscriber</h3>
+    <div class="compare">
+      <div class="panel easy">
+        <h4>Easiest <span class="lbl">&mdash; print what arrives</span></h4>
+<pre><code>import paho.mqtt.client as mqtt
+
+c = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
+c.on_message = lambda cl, ud, m: print(m.payload.decode())
+c.connect("localhost", 1883)
+c.subscribe("test/temp")
+c.loop_forever()</code></pre>
+      </div>
+      <div class="panel pro">
+        <h4>Production <span class="lbl">&mdash; keeps working after a drop</span></h4>
+<pre><code>import logging
+import paho.mqtt.client as mqtt
+
+BROKER, PORT = "localhost", 1883
+TOPIC = "sensors/+/temp"
+
+logging.basicConfig(level=logging.INFO)
+log = logging.getLogger("sub")
+
+
+def on_connect(c, userdata, flags, rc, props):
+    if rc != 0:
+        log.error("connect failed: %s", rc)
+        return
+    c.subscribe(TOPIC, qos=1)      <span class="cm"># re-runs on every reconnect</span>
+    log.info("subscribed to %s", TOPIC)
+
+
+def on_message(c, userdata, msg):
+    try:
+        value = float(msg.payload.decode())
+    except ValueError:
+        log.warning("bad data on %s: %r", msg.topic, msg.payload)
+        return
+    log.info("%s = %.1f", msg.topic, value)
+
+
+client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2,
+                     client_id="temp-logger")
+client.on_connect = on_connect
+client.on_message = on_message
+
+client.connect(BROKER, PORT, keepalive=30)
+client.loop_forever()             <span class="cm"># blocks + auto-reconnects</span></code></pre>
+      </div>
+    </div>
+
+    <h3 id="proadds">What the pro version adds, and why</h3>
+    <p class="section-intro">Picture the broker as a <strong>post office</strong>: a topic is an
+      address, publishing is mailing a note, subscribing is filing a mail-forwarding request.</p>
+
+    <div class="maplist">
+      <article class="mi">
+        <h4>Named constants &mdash; <code>BROKER</code>, <code>TOPIC</code></h4>
+        <p><span class="tag">Code</span> One place to change the address, and the exact same spelling in every file &mdash; a typo can't quietly send messages nowhere.</p>
+        <p><span class="tag rl">Real&nbsp;life</span> A rubber stamp for the address instead of writing it from memory on every envelope.</p>
+      </article>
+      <article class="mi">
+        <h4><code>on_connect</code> that checks <code>rc</code> (the reason code)</h4>
+        <p><span class="tag">Code</span> You find out whether the connection actually succeeded, instead of charging ahead assuming it did.</p>
+        <p><span class="tag rl">Real&nbsp;life</span> Waiting for the call to actually connect before you start talking.</p>
+      </article>
+      <article class="mi">
+        <h4>Calling <code>subscribe()</code> <em>inside</em> <code>on_connect</code></h4>
+        <p><span class="tag">Code</span> Paho re-runs <code>on_connect</code> after every automatic reconnect, so your subscriptions are always restored. Subscribe once at the bottom instead and a single Wi-Fi blip leaves you silently deaf.</p>
+        <p><span class="tag rl">Real&nbsp;life</span> The post office cancels your mail-forwarding order when you move out. Re-filing it the moment you move back in means you never miss a letter.</p>
+      </article>
+      <article class="mi">
+        <h4><code>qos=1</code> on publish and subscribe</h4>
+        <p><span class="tag">Code</span> The broker keeps re-sending until the far side acknowledges. You might get a duplicate; you won't get silence.</p>
+        <p><span class="tag rl">Real&nbsp;life</span> Registered mail with a signature on delivery, versus shouting it across a noisy room once and hoping.</p>
+      </article>
+      <article class="mi">
+        <h4><code>will_set(...)</code> &mdash; the "last will"</h4>
+        <p><span class="tag">Code</span> You hand the broker a message up front; if your client dies without a clean disconnect, the broker publishes it for you.</p>
+        <p><span class="tag rl">Real&nbsp;life</span> A note left with reception: "if I haven't checked in by closing, tell anyone who asks that I've left the building."</p>
+      </article>
+      <article class="mi">
+        <h4><code>retain=True</code></h4>
+        <p><span class="tag">Code</span> The broker stores the last message on that topic and gives it to any client that subscribes <em>later</em>, straight away.</p>
+        <p><span class="tag rl">Real&nbsp;life</span> A whiteboard showing the current reading, versus a one-time PA announcement you only catch if you were in the room.</p>
+      </article>
+      <article class="mi">
+        <h4><code>keepalive=30</code></h4>
+        <p><span class="tag">Code</span> The client pings every 30&nbsp;s; hear nothing for ~1.5&times; that and the broker declares it dead and fires its last will.</p>
+        <p><span class="tag rl">Real&nbsp;life</span> A short "still here" check-in call &mdash; miss enough of them and they assume you're gone.</p>
+      </article>
+      <article class="mi">
+        <h4><code>client_id="temp-logger"</code></h4>
+        <p><span class="tag">Code</span> A stable name instead of a random one &mdash; needed if you later want the broker to queue messages for you while you're offline.</p>
+        <p><span class="tag rl">Real&nbsp;life</span> A named mailbox you rent, instead of grabbing a fresh anonymous PO box every visit.</p>
+      </article>
+      <article class="mi">
+        <h4>Guarding the parse in <code>on_message</code></h4>
+        <p><span class="tag">Code</span> Payloads arrive as raw bytes from anywhere; <code>float(...)</code> inside a <code>try</code> means one malformed message logs a warning instead of killing the listener.</p>
+        <p><span class="tag rl">Real&nbsp;life</span> Checking a parcel isn't crushed before you rely on what's inside.</p>
+      </article>
+      <article class="mi">
+        <h4><code>try / finally</code> with <code>loop_stop()</code> + <code>disconnect()</code></h4>
+        <p><span class="tag">Code</span> The background thread and the socket get released even if something throws partway through.</p>
+        <p><span class="tag rl">Real&nbsp;life</span> Hanging up the phone and locking the office on the way out, instead of just wandering off.</p>
+      </article>
+      <article class="mi">
+        <h4><code>logging</code> instead of <code>print</code></h4>
+        <p><span class="tag">Code</span> Timestamps, severity levels, and one switch to silence it or send it to a file.</p>
+        <p><span class="tag rl">Real&nbsp;life</span> A dated logbook versus a drawer of loose sticky notes.</p>
+      </article>
+      <article class="mi">
+        <h4><code>loop_forever()</code> for the subscriber</h4>
+        <p><span class="tag">Code</span> It doesn't only block &mdash; it reconnects on its own after a drop, backing off between tries, and then <code>on_connect</code> re-subscribes.</p>
+        <p><span class="tag rl">Real&nbsp;life</span> Redialing after 1&nbsp;s, then 2, then 4 &mdash; not hammering redial nonstop, and not giving up after the first failed try.</p>
+      </article>
+    </div>
+  </section>
+
+  <section>
+    <h2 id="python"><span class="num">06</span>How much Python do you actually need?</h2>
+    <p class="section-intro">Not much. paho-mqtt touches a small corner of the language. Here is
+      the honest split &mdash; what to be comfortable with before you start, and what you can
+      cheerfully ignore for now.</p>
+
+    <h3 id="py-need">What you need &mdash; and what you don't</h3>
+    <div class="pygrid">
+      <div class="pycol need">
+        <h4>Get comfortable with</h4>
+        <ul>
+          <li><b>object.method()</b><span>Make a thing, keep it in a variable, call methods on it: <code>c = mqtt.Client(...)</code>, then <code>c.connect(...)</code>, <code>c.publish(...)</code>. This is 80% of the code.</span></li>
+          <li><b><code>def</code>, and passing a function <em>by name</em></b><span><code>c.on_message = on_message</code> &mdash; no parentheses. You hand paho the function and it calls it later. <code>on_message()</code> would call it right now, the classic beginner slip.</span></li>
+          <li><b>Strings and f-strings</b><span><code>f"sensors/{room}/temp"</code> to build topic names and message text.</span></li>
+          <li><b><code>bytes</code> vs <code>str</code></b><span>Payloads arrive as bytes: <code>msg.payload.decode()</code> for text, then <code>float(...)</code> or <code>int(...)</code> for a number.</span></li>
+          <li><b><code>import</code></b><span>Just <code>import paho.mqtt.client as mqtt</code>.</span></li>
+          <li><b><code>while True</code> + <code>time.sleep()</code></b><span>Only if you want to publish on a timer.</span></li>
+          <li><b><code>try</code> / <code>except</code></b><span>The shape only &mdash; to guard a conversion that might fail on bad input.</span></li>
+        </ul>
+      </div>
+      <div class="pycol skip">
+        <h4>Skip for now</h4>
+        <ul>
+          <li>Writing your own <code>class</code> &mdash; you <em>use</em> objects, you don't build them</li>
+          <li>Decorators, generators, list / dict comprehensions</li>
+          <li><code>async</code> / <code>await</code> / <code>asyncio</code></li>
+          <li>Type hints &mdash; <code>def f(x: int) -&gt; str</code></li>
+          <li>Threads &mdash; <code>loop_start()</code> makes one for you; you never touch it</li>
+          <li>Packaging, <code>venv</code>, <code>pip</code> internals (useful later, not now)</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3 id="py-model">The one idea that matters: event-driven code</h3>
+    <p>Most beginner Python runs <strong>top to bottom</strong>, then stops. paho doesn't. You set
+      up callbacks, hand control to <code>loop_forever()</code> (or <code>loop_start()</code>), and
+      from then on <em>paho</em> calls <em>your</em> functions whenever something happens &mdash; a
+      message arrives, the connection drops, a publish is acknowledged.</p>
+
+    <figure class="diagram">
+      <svg viewBox="0 0 620 250" role="img" aria-label="Your setup code starts the loop. The loop waits. When an event arrives paho calls your callback. The callback returns and the loop waits again.">
+        <defs>
+          <marker id="arw2" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+            <path d="M0 0 L10 5 L0 10 z" fill="var(--accent)"></path>
+          </marker>
+        </defs>
+
+        <text x="310" y="32" text-anchor="middle" fill="var(--ink-faint)" font-family="IBM Plex Mono, monospace" font-size="11">you never call on_message yourself &mdash; paho does</text>
+
+        <rect x="14" y="94" width="150" height="62" rx="10" fill="var(--surface-sunk)" stroke="var(--rule-strong)"></rect>
+        <text x="89" y="119" text-anchor="middle" fill="var(--ink)" font-family="IBM Plex Sans, sans-serif" font-size="13" font-weight="600">Your setup</text>
+        <text x="89" y="137" text-anchor="middle" fill="var(--ink-faint)" font-family="IBM Plex Mono, monospace" font-size="9.5">on_* = ... ; loop()</text>
+
+        <line class="dash" x1="168" y1="125" x2="246" y2="125" stroke="var(--accent)" stroke-width="2" marker-end="url(#arw2)"></line>
+
+        <rect x="252" y="86" width="176" height="80" rx="12" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.5"></rect>
+        <text x="340" y="118" text-anchor="middle" fill="var(--ink)" font-family="IBM Plex Sans, sans-serif" font-size="14" font-weight="700">The loop runs</text>
+        <text x="340" y="138" text-anchor="middle" fill="var(--ink-soft)" font-family="IBM Plex Sans, sans-serif" font-size="11.5">waiting for an event</text>
+
+        <rect x="424" y="180" width="182" height="54" rx="10" fill="var(--surface-sunk)" stroke="var(--rule-strong)"></rect>
+        <text x="515" y="202" text-anchor="middle" fill="var(--ink)" font-family="IBM Plex Sans, sans-serif" font-size="12.5" font-weight="600">Your callback runs</text>
+        <text x="515" y="219" text-anchor="middle" fill="var(--ink-faint)" font-family="IBM Plex Mono, monospace" font-size="9.5">on_message(...)</text>
+
+        <path class="dash" d="M426 158 C 490 158, 512 160, 514 178" fill="none" stroke="var(--accent)" stroke-width="2" marker-end="url(#arw2)"></path>
+        <text x="470" y="150" text-anchor="middle" fill="var(--ink-faint)" font-family="IBM Plex Mono, monospace" font-size="9.5">event fires</text>
+
+        <path class="dash" d="M424 210 C 350 216, 312 198, 322 168" fill="none" stroke="var(--accent)" stroke-width="2" marker-end="url(#arw2)"></path>
+        <text x="300" y="238" text-anchor="middle" fill="var(--ink-faint)" font-family="IBM Plex Mono, monospace" font-size="9.5">returns &rarr; back to waiting</text>
+      </svg>
+      <figcaption>Register callbacks &rarr; hand control to the loop &rarr; paho calls your functions on each event, for as long as the loop runs.</figcaption>
+    </figure>
+
+    <div class="callout">
+      <p><b>Rule of thumb:</b> if you can read the two scripts in section 05, and change the topic,
+        the payload, and what happens inside <code>on_message</code> without feeling lost, you
+        already know enough to work here. Fill the other gaps as you hit them.</p>
+    </div>
+  </section>
+
+  <footer>
+    <p>paho-mqtt 2.x · a local Mosquitto broker in WSL Ubuntu · connect from Windows as
+      <code>localhost:1883</code>. Install client: <code>pip install paho-mqtt</code>.
+      Install broker: <code>sudo apt install mosquitto mosquitto-clients</code>.</p>
+  </footer>
+  </main>
+</div>
+<script>
+  (function () {
+    var links = Array.prototype.slice.call(document.querySelectorAll('.toc a[href^="#"]'));
+    if (!links.length || !('IntersectionObserver' in window)) return;
+    var byId = {};
+    var targets = [];
+    links.forEach(function (a) {
+      var id = a.getAttribute('href').slice(1);
+      var el = document.getElementById(id);
+      if (el) { byId[id] = a; targets.push(el); }
+    });
+    var current = null;
+    function setActive(a) {
+      if (a === current) return;
+      if (current) current.classList.remove('active');
+      a.classList.add('active');
+      current = a;
+    }
+    var obs = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) setActive(byId[e.target.id]);
+      });
+    }, { rootMargin: '0px 0px -72% 0px', threshold: 0 });
+    targets.forEach(function (t) { obs.observe(t); });
+  })();
+</script>
+</body>
+</html>
