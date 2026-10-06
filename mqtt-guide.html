@@ -24,6 +24,8 @@
     --opt: #8a5a12;
     --opt-soft: #f5ebda;
     --shadow: 0 1px 2px rgba(20, 30, 35, .06), 0 8px 24px rgba(20, 30, 35, .05);
+    --accent2: #7c5cbf;
+    --accent2-soft: #efe9f8;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
@@ -43,6 +45,8 @@
       --opt: #d09a4f;
       --opt-soft: #2f2513;
       --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 10px 30px rgba(0, 0, 0, .25);
+      --accent2: #b79aeb;
+      --accent2-soft: #2a2138;
     }
   }
   :root[data-theme="dark"] {
@@ -61,6 +65,8 @@
     --opt: #d09a4f;
     --opt-soft: #2f2513;
     --shadow: 0 1px 2px rgba(0, 0, 0, .3), 0 10px 30px rgba(0, 0, 0, .25);
+    --accent2: #b79aeb;
+    --accent2-soft: #2a2138;
   }
 
   * { box-sizing: border-box; }
@@ -467,6 +473,32 @@
   .pycol li > span { color: var(--ink-soft); }
   .pycol li code { font-size: .84em; white-space: normal; }
   @media (max-width: 620px) { .pygrid { grid-template-columns: minmax(0, 1fr); } }
+
+  /* ---- Python vs C parameter cases ---- */
+  .pccase { margin: 34px 0 0; }
+  .pccase-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+  .pccase-head h4 { margin: 0; font-size: 1.06rem; font-weight: 700; }
+  .badge {
+    font-family: "IBM Plex Mono", ui-monospace, monospace;
+    font-size: .7rem;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    font-weight: 700;
+    padding: 5px 12px;
+    border-radius: 20px;
+    white-space: nowrap;
+  }
+  .badge.yes { background: var(--req-soft); color: var(--req); }
+  .badge.no { background: var(--opt-soft); color: var(--opt); }
+  .panel.pylang > h4 { background: var(--accent2-soft); color: var(--accent2); }
+  .panel.clang > h4 { background: var(--surface-sunk); color: var(--ink-soft); }
+  .panel.pylang pre, .panel.clang pre { font-size: 14px; line-height: 1.8; padding: 18px 20px; }
 </style>
 </head>
 <body>
@@ -488,6 +520,13 @@
         <p class="toc-cat">How much Python?</p>
         <a href="#py-need">What you need (and don't)</a>
         <a href="#py-model">The event-driven model</a>
+        <p class="toc-cat">Functions</p>
+        <a href="#func-params">Parameters: when, when not</a>
+        <a href="#func-return">Return: when, when not</a>
+        <p class="toc-cat">Loops</p>
+        <a href="#loop-naming">Don't reuse the list's name</a>
+        <p class="toc-cat">Parameters vs. C</p>
+        <a href="#params-vs-c">Six cases, side by side</a>
       </nav>
     </details>
   </aside>
@@ -965,6 +1004,253 @@ client.loop_forever()             <span class="cm"># blocks + auto-reconnects</s
       <p><b>Rule of thumb:</b> if you can read the two scripts in section 05, and change the topic,
         the payload, and what happens inside <code>on_message</code> without feeling lost, you
         already know enough to work here. Fill the other gaps as you hit them.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2 id="func-params"><span class="num">07</span>Functions: parameters, when and when not</h2>
+    <p class="section-intro">Same rule as C: a parameter exists only if the function's body needs
+      data it doesn't already have. No dependency on outside data &rarr; empty parentheses.</p>
+
+    <div class="pygrid">
+      <div class="pycol need">
+        <h4>Needs a parameter</h4>
+        <ul>
+          <li><b><code>def square(n):</code></b><span>Can't compute <code>n * n</code> without knowing <code>n</code> &mdash; it has to come from the caller.</span></li>
+          <li><b><code>def is_even(n):</code></b><span>The check depends entirely on the value passed in.</span></li>
+        </ul>
+      </div>
+      <div class="pycol skip">
+        <h4>No parameter needed</h4>
+        <ul>
+          <li><b><code>def greet():</code></b><span>Always prints the same fixed message &mdash; nothing from the caller changes what it does.</span></li>
+          <li><b><code>def print_menu():</code></b><span>Displays a fixed, hardcoded list. No outside input required.</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="compare">
+      <div class="panel easy">
+        <h4>Takes a parameter</h4>
+<pre><code>def square(n):
+    return n * n
+
+print(square(4))   <span class="cm"># 16</span></code></pre>
+      </div>
+      <div class="panel pro">
+        <h4>Takes none</h4>
+<pre><code>def greet():
+    print("hello")
+
+greet()             <span class="cm"># hello</span></code></pre>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2 id="func-return"><span class="num">08</span>Functions: return, when and when not</h2>
+    <p class="section-intro">Use <code>return</code> when the caller needs to <em>use</em> the
+      result afterward (store it, print it, pass it on). Skip it when the function's whole job is
+      the side effect itself &mdash; printing, saving, sending &mdash; and nothing comes back.</p>
+
+    <div class="pygrid">
+      <div class="pycol need">
+        <h4>Needs return</h4>
+        <ul>
+          <li><b><code>square(n)</code></b><span>The caller wants the number back to store, print, or use in more math.</span></li>
+          <li><b><code>is_even(n)</code></b><span>The caller needs the <code>True</code>/<code>False</code> to branch on with <code>if</code>.</span></li>
+        </ul>
+      </div>
+      <div class="pycol skip">
+        <h4>No return needed</h4>
+        <ul>
+          <li><b><code>greet()</code></b><span>Job done the moment it prints. Nothing for the caller to use afterward.</span></li>
+          <li><b><code>client.loop_start()</code></b><span>Starts a background thread as a side effect &mdash; there's no value to hand back.</span></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="callout">
+      <p><b>C parallel:</b> a Python function with no <code>return</code> behaves like C's
+        <code>void f(...)</code>. Under the hood it still returns something &mdash; the special
+        value <code>None</code> &mdash; but you're not meant to use it.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2 id="loop-naming"><span class="num">09</span>For loops: don't name the loop variable after the list</h2>
+    <p class="section-intro"><code>for X in Y:</code> means two different things happen to
+      <code>X</code> and <code>Y</code>. Mixing up their names hides that difference.</p>
+
+    <div class="callout">
+      <p><b>What actually happens:</b> Python looks at <code>Y</code> <em>once</em>, right when the
+        loop starts, and builds an internal iterator over whatever list <code>Y</code> pointed to
+        at that moment. Then, on every pass through the loop, it takes the next value from that
+        iterator and stores it in <code>X</code> &mdash; overwriting whatever <code>X</code> used
+        to hold.</p>
+      <p>If <code>X</code> and <code>Y</code> are the <strong>same name</strong>, the iterator
+        still works fine (it already grabbed the list before anything got overwritten) &mdash;
+        but by the end of the loop, that name no longer points to your list. It points to the
+        <em>last value</em> the loop produced instead.</p>
+    </div>
+
+    <div class="compare">
+      <div class="panel pro">
+        <h4>Confusing <span class="lbl">&mdash; happens to work</span></h4>
+<pre><code>nums = [20, 21, 22, 25, 10, 6]
+
+for nums in nums:
+    if nums % 2 == 0:
+        print(nums)
+
+<span class="cm"># loop output is fine: 20, 22, 10, 6
+# but afterward: nums == 6
+# the original list is gone &mdash;
+# "nums" now means one number, not six</span></code></pre>
+      </div>
+      <div class="panel easy">
+        <h4>Clear <span class="lbl">&mdash; list stays intact</span></h4>
+<pre><code>nums = [20, 21, 22, 25, 10, 6]
+
+for num in nums:
+    if num % 2 == 0:
+        print(num)
+
+<span class="cm"># loop output: 20, 22, 10, 6
+# afterward: nums is still
+# [20, 21, 22, 25, 10, 6]</span></code></pre>
+      </div>
+    </div>
+
+    <div class="callout">
+      <p><b>Rule of thumb:</b> the thing after <code>in</code> is the collection (plural &mdash;
+        <code>nums</code>, <code>items</code>, <code>users</code>). The thing before
+        <code>in</code> is one element of it (singular &mdash; <code>num</code>,
+        <code>item</code>, <code>user</code>). Different names, on purpose, every time.</p>
+    </div>
+  </section>
+
+  <section>
+    <h2 id="params-vs-c"><span class="num">10</span>Parameters vs. C, six cases side by side</h2>
+    <p class="section-intro">Same question every time: does the function's body need a value it
+      doesn't already have? Green means yes, amber means no &mdash; and the C version makes the
+      same call, it just also has to spell out the types.</p>
+
+    <div class="pccase">
+      <div class="pccase-head">
+        <h4>1. Square a number</h4>
+        <span class="badge yes">Needs parameter</span>
+      </div>
+      <div class="compare">
+        <div class="panel pylang"><h4>Python</h4>
+<pre><code>def square(n):
+    return n * n</code></pre>
+        </div>
+        <div class="panel clang"><h4>C</h4>
+<pre><code>int square(int n) {
+    return n * n;
+}</code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="pccase">
+      <div class="pccase-head">
+        <h4>2. Greet with a fixed message</h4>
+        <span class="badge no">No parameter</span>
+      </div>
+      <div class="compare">
+        <div class="panel pylang"><h4>Python</h4>
+<pre><code>def greet():
+    print("hello")</code></pre>
+        </div>
+        <div class="panel clang"><h4>C</h4>
+<pre><code>void greet(void) {
+    printf("hello");
+}</code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="pccase">
+      <div class="pccase-head">
+        <h4>3. Check if a number is even</h4>
+        <span class="badge yes">Needs parameter</span>
+      </div>
+      <div class="compare">
+        <div class="panel pylang"><h4>Python</h4>
+<pre><code>def is_even(n):
+    return n % 2 == 0</code></pre>
+        </div>
+        <div class="panel clang"><h4>C</h4>
+<pre><code>int is_even(int n) {
+    return n % 2 == 0;
+}</code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="pccase">
+      <div class="pccase-head">
+        <h4>4. Ask the user for a number</h4>
+        <span class="badge no">No parameter</span>
+      </div>
+      <div class="compare">
+        <div class="panel pylang"><h4>Python</h4>
+<pre><code>def get_number():
+    n = int(input("n? "))
+    return n</code></pre>
+        </div>
+        <div class="panel clang"><h4>C</h4>
+<pre><code>int get_number(void) {
+    int n;
+    scanf("%d", &n);
+    return n;
+}</code></pre>
+        </div>
+      </div>
+      <p class="section-intro" style="margin-top:8px;">Gets its own data from the user instead of
+        the caller &mdash; so nothing needs to be passed in, even though it still returns a value.</p>
+    </div>
+
+    <div class="pccase">
+      <div class="pccase-head">
+        <h4>5. Print a fixed menu</h4>
+        <span class="badge no">No parameter</span>
+      </div>
+      <div class="compare">
+        <div class="panel pylang"><h4>Python</h4>
+<pre><code>def print_menu():
+    print("1. Start")
+    print("2. Quit")</code></pre>
+        </div>
+        <div class="panel clang"><h4>C</h4>
+<pre><code>void print_menu(void) {
+    printf("1. Start\n");
+    printf("2. Quit\n");
+}</code></pre>
+        </div>
+      </div>
+    </div>
+
+    <div class="pccase">
+      <div class="pccase-head">
+        <h4>6. Add two numbers</h4>
+        <span class="badge yes">Needs parameters</span>
+      </div>
+      <div class="compare">
+        <div class="panel pylang"><h4>Python</h4>
+<pre><code>def add(a, b):
+    return a + b</code></pre>
+        </div>
+        <div class="panel clang"><h4>C</h4>
+<pre><code>int add(int a, int b) {
+    return a + b;
+}</code></pre>
+        </div>
+      </div>
+      <p class="section-intro" style="margin-top:8px;">Two pieces of missing information &rarr;
+        two parameters. Nothing caps it at one.</p>
     </div>
   </section>
 

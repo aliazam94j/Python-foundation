@@ -1,126 +1,33 @@
+#exercises 1 
 
-def hello():
-    return "Hello world"
-print(hello())
+# width = float(input("Enter the width "))
+# height = float(input("Enter the height "))
+# area = width * height
+
+# print(area)
 
 
-# def magic_number():
-#     """
-#     Returns the integer value 42.
-
-#     Returns:
-#         int: The integer value 42.
-#     """
-#     # TODO: Write your code here
-
-def m_nr():
-    return 42
-print(m_nr())
+#exercises 2
 
 
 
-# def float_str(string_number):
-#     """
-#     Returns the float number of the incoming string.
-
-#     Arguments:
-#         number (str): The number to cast to float.
-
-#     Returns:
-#         float: The float number.
-#     """
-#     # TODO: Write your code here
-
-def float_str(string_nr):
-    return float("5")
-    print(float_str())
 
 
-# def string_length(word):
-#     """
-#     Returns the length of the incoming string.
-
-#     Arguments:
-#         word (str): The string to use.
-
-#     Returns:
-#         int: The length of the string.
-#     """
-#     # TODO: Write your code here
+#exercises 3 
 
 
-# def round_pi(pi):
-#     """
-#     Returns the value of PI, rounded to three decimals.
-
-#     Arguments:
-#         pi (float): The value of PI to round.
-#     Returns:
-#         float: The value of PI, rounded to three decimals.
-#     """
-#     # TODO: Write your code here
+# for i in range(2,21):
+#     if i % 2 == 0:
+#         print(i,"= even")
+#     else:
+#         print(i,"= odd")
 
 
-# def concat_strings(word1, word2):
-#     """
-#     Returns a concatenated string of the incoming strings, with a space between the words.
-
-#     Arguments:
-#         word1 (str): The first string to use.
-#         word2 (str): The second string to use.
-
-#     Returns:
-#         str: The concatenated string.
-#     """
-#     # TODO: Write your code here
+#exercises 4 
 
 
-# def char_at_position(word):
-#     """
-#     Returns the character at index 4 of the incoming string.
-#     Hint: String indexing starts at 0.
+scores = [70,85,90,65,100]
+total = 0
 
-#     Arguments:
-#         word (str): The string to use.
-
-#     Returns:
-#         str: The character at index 4 in the incoming string.
-#     """
-#     # TODO: Write your code here
-# def divide_string_number():
-#     """
-#     Assign the following values to variables. String '30' and integer 5.
-#     Convert the string to an integer and divide it by the integer.
-#     Round the result to the nearest integer and return it.
-#     Hint: int() and round()
-
-#     Returns:
-#         int: The rounded result of int('30') / 5.
-#     """
-#     # TODO: Write your code here
-
-
-# def even_or_odd(n):
-#     """
-#     Determines whether the given integer is even or odd.
-
-#     Arguments:
-#         n (int): The integer to check.
-
-#     Returns:
-#         str: "Even" if n is divisible by 2, otherwise "Odd".
-#     """
-#     # TODO: Write your code here
-
-
-# def password_check(password):
-#     """
-#     Checks the length of the given password string.
-
-#     Arguments:
-#         password (str): The password to check.
-
-#     Returns:
-#         str: "Too short" if the password length is less than 5, otherwise "OK".
-#     """
-#     # TODO: Write your code here
+for i in scores:
+    total =
