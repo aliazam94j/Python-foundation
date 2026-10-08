@@ -90,9 +90,11 @@
 # 2 ways of poly 
 # 1. inheritance =an object could be treated of the same type as a parent class
 # 2. "Duck typing" = object must have necessary attributes/method
-
-
 # 1st way = inheritance lesson 
+
+
+
+
 # from abc import ABC, abstractmethod
 
 
@@ -353,3 +355,135 @@
 # energydrink3 = EnergyDrink("DragonFruitVibe", "DragonFruit")
 
 # print(EnergyDrink.get_count())
+
+
+
+
+
+
+#magic method lesson
+# pythons build in operations.
+# by using the dunnder method it allows developers to define and customize the behvaior of objects.
+# dunder method 
+# __init__ , __str__ , __eq__ , 
+# __str__ returns a string instead of memory 
+# __eq__ check if the objects are equal to each other
+# __lt__ less then
+#__gt__ greater then
+#__contains__ to find a keyword your looking for 
+# __getitem__ gives you the index 
+
+
+
+
+# class Book:
+
+#     def __init__(self,title,author,num_pages):
+#         self.title = title
+#         self.author = author
+#         self.num_pages = num_pages
+
+
+#     def __str__(self):
+#         return f"{self.title} by {self.author}"
+
+
+#     def __eq__(self,other):
+#         return self.title == other.title and self.author == other.author
+
+
+#     def __lt__(self, other):
+#         return self.num_pages < other.num_pages
+
+#     def __gt__(self, other):
+#         return self.num_pages > other.num_pages
+
+#     def __add__(self, other):
+#         return f"{self.num_pages + other.num_pages} pages"
+
+
+#     def __contains__(self, item):
+#         return item in self.title or item in self.author
+
+
+#     def __getitem__(self, key):
+#         if key == 'title':
+#             return self.title
+#         elif key == 'author':
+#             return self.author
+#         elif key == 'num_pages':
+#             return self.num_pages
+#         else:
+#             return f"item {key} was not found "
+
+    
+
+
+    
+# book1 = Book("The bird", "Birdman", 280)
+# book2 = Book("The Tiger", "TigerMan", 250)
+# book3 = Book("The cat", "Catman", 300)
+# book4 = Book("The bird", "Birdman", 280)
+
+
+# print("Lion" in book1)
+# print("Birdman" in book4)
+# print(book1['title'])
+# print(book1['author'])
+# print(book1['num_pages'])
+# print(book1['video'])
+
+
+
+#@ property 
+# if u add after self. a underscore = _
+# it tells u and other devs, they are meant to be protected, they are internal and shouldnt be access outside of the class directly
+# but u can still ofc access them but u will get a warning
+
+
+
+
+class Rectangle:
+    def __init__(self,width,height):
+         self._width = width  
+         self._height = height
+      
+    @property
+    def height(self):
+         return f"{self._height:.1f}cm"
+    @property 
+    def width(self):
+         return f"{self._width:.1f}cm"
+
+    @width.setter
+    def width(self,new_width):
+         if new_width > 0:
+              self._width = new_width
+         else:
+              print("width must be greater then zero")
+
+    @height.setter
+    def height(self,new_height):
+         if new_height > 0:
+              self._height = new_height
+         else:
+              print("height must be greater then zero")
+
+    @width.deleter
+    def width(self):
+         del self._width
+         print("width has been deleted")
+
+    @height.deleter
+    def height(self):
+         del self._height
+         print("height has been deleted")
+
+
+
+rectangle = Rectangle(3,4)
+
+del rectangle.width
+del rectangle.height
+
+
