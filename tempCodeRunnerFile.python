@@ -1,0 +1,25 @@
+
+
+class Player:
+    def __init__(self,name,score):
+        self.name = name
+        self.score = score
+
+
+
+    def add_score(self,score1):
+        self.score = score1
+
+
+    def show_result(self):
+        print (f"{self.name} {self.score}")
+
+
+
+player1 = Player("Ali",20)
+player2 = Player("yunus",10)
+
+player1.add_score(20)
+player2.add_score(25)
+
+print(player2.show_result())
